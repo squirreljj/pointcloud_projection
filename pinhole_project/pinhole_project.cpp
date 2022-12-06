@@ -59,10 +59,10 @@ using namespace cv;
 using namespace std::chrono;
 using namespace pcl;
 /* 批量读参数 */
-double fx=746.972371568787;
-double fy=747.4249290886987;
-double cx= 671.0397994161177;
-double cy=494.21240703599656;
+double fx=732.6692652225879;
+double fy=732.1975287053851;
+double cx= 672.7615246766726;
+double cy=480.87085822459227;
 void getColor(float p, float np, float& r, float& g, float& b)
 {
 	float inc = 6.0 / np;
@@ -85,11 +85,11 @@ void getColor(float p, float np, float& r, float& g, float& b)
 }
 void distortion( Eigen::Vector2d& p_u, Eigen::Vector2d& d_u) 
 {
-    double k1 =  -0.35649596903327415;
-    double k2 = 0.15755831999406035;
+    double k1 =  -0.29658083502551447;
+    double k2 =  0.06565778518876052;
     double k3 =  -0.03748325030506776;
-    double p1 =  -0.00030180726725010406;
-    double p2 = 0.0004994351506515072;
+    double p1 =  -0.0002376690360887696;
+    double p2 = 0.0002715699023365462;
 
     double mx2_u, my2_u, mxy_u, rho2_u, rad_dist_u;
 
@@ -97,7 +97,7 @@ void distortion( Eigen::Vector2d& p_u, Eigen::Vector2d& d_u)
     my2_u = p_u(1) * p_u(1);
     mxy_u = p_u(0) * p_u(1);
     rho2_u = mx2_u + my2_u;
-    rad_dist_u =  1+k1 * rho2_u + k2 * rho2_u * rho2_u ;
+    rad_dist_u = 1+ k1 * rho2_u + k2 * rho2_u * rho2_u ;
     d_u << p_u(0) * rad_dist_u + 2.0 * p1 * mxy_u + p2 * (rho2_u + 2.0 * mx2_u),
            p_u(1) * rad_dist_u + 2.0 * p2 * mxy_u + p1 * (rho2_u + 2.0 * my2_u);
 }
@@ -228,9 +228,9 @@ int main(int argc,char *argv[])
   // 0.0428639 -0.000577437    -0.999081  -0.00757456
   // -0.043156    -0.999068   -0.0012741   -0.0375876
       //     0            0            0            1
-				m4f_transform(0,0)=-0.998148 ;          m4f_transform(0,1)=0.0431709 ;       m4f_transform(0,2)=-0.0428488;m4f_transform(0,3)=  0.0945096;
-				m4f_transform(1,0)=0.0428639;           m4f_transform(1,1)=-0.000577437 ;	m4f_transform(1,2)=-0.999081;	m4f_transform(1,3)=-0.00757456;
-				m4f_transform(2,0)=-0.043156 ;          m4f_transform(2,1)=-0.999068  ;	m4f_transform(2,2)= -0.0012741;m4f_transform(2,3)=-0.0375876;
+				m4f_transform(0,0)=-0.999972 ;          m4f_transform(0,1)=0.00738978 ;       m4f_transform(0,2)=0.00150644;m4f_transform(0,3)=  0.148916;
+				m4f_transform(1,0)=-0.00121546;           m4f_transform(1,1)= 0.0392237 ;	m4f_transform(1,2)=-0.99923;	m4f_transform(1,3)=-0.0812583;
+				m4f_transform(2,0)=-0.00744318 ;          m4f_transform(2,1)=-0.999203  ;	m4f_transform(2,2)= -0.0392136;m4f_transform(2,3)=-0.0998142;
 				m4f_transform(3,0)=0;                   m4f_transform(3,1)=0;                 m4f_transform(3,2)=0;           m4f_transform(3,3)=1;
 				Eigen::Transform<float, 3, Eigen::Affine> transNow1 (m4f_transform);
 				pcl::transformPointCloud(*cloud_c1, *cloud_c1, transNow1);	
@@ -259,13 +259,22 @@ int main(int argc,char *argv[])
 					Eigen::Vector3d p_3d(cloud_c1->points[i].x,
 					cloud_c1->points[i].y,
 					cloud_c1->points[i].z);
+                                        //cout<<"p_3d(0)"<<p_3d(0)<<endl;
+                                        //cout<<"p_3d(1)"<<p_3d(1)<<endl;
+                                        //cout<<"p_3d(2)"<<p_3d(2)<<endl;
 					Eigen::Vector2d p_u, p_d,p_2d;
 					p_u << p_3d(0) / p_3d(2), p_3d(1) / p_3d(2);
 					Eigen::Vector2d d_u;
 					distortion(p_u, d_u);
-					p_d = p_u+d_u;
-    					// Apply generalised projection matrix
-   					p_2d << fx * d_u(0) + cx,fy * d_u(1) + cy;
+					p_d =d_u;//code added by gh
+    					//p_d = p_u+d_u;
+                                        // Apply generalised projection matrix
+                                        
+   					p_2d << fx * p_d(0) + cx,fy * p_d(1) + cy;
+                                        //cout<<"p_2d(0):"<<p_2d(0)<<endl;
+                                       // cout<<"p_2d(1):"<<p_2d(1)<<endl;
+					if(p_2d(1)<0 || p_2d(0)<0 || p_2d(1)>= img.rows || p_2d(0)>= img.cols )
+						continue;
 					if(depth.at<ushort>(p_2d(1), p_2d(0))!=0 && depth.at<ushort>(p_2d(1), p_2d(0)) > sqrt(cloud_c1->points[i].x * cloud_c1->points[i].x + cloud_c1->points[i].y * cloud_c1->points[i].y + cloud_c1->points[i].z * cloud_c1->points[i].z)){
 						depth.at<ushort>(p_2d(1), p_2d(0))=sqrt(cloud_c1->points[i].x * cloud_c1->points[i].x + cloud_c1->points[i].y * cloud_c1->points[i].y + cloud_c1->points[i].z * cloud_c1->points[i].z);
 						dp.at<float>(p_2d(1), p_2d(0))=sqrt(cloud_c1->points[i].x * cloud_c1->points[i].x + cloud_c1->points[i].y * cloud_c1->points[i].y + cloud_c1->points[i].z * cloud_c1->points[i].z);
@@ -296,7 +305,7 @@ int main(int argc,char *argv[])
 				{
 					for (int j = 0; j < depth.cols; j++)
 					{
-						disparity.ptr<uchar>(i)[j] = 746.972371568787*0.05307357075501239/depth.ptr<ushort>(i)[j];
+						disparity.ptr<uchar>(i)[j] = 732.6692652225879*0.05307357075501239/depth.ptr<ushort>(i)[j];
 						f<<dp.ptr<float>(i)[j]<<" ";
 					}
 				}
@@ -316,5 +325,6 @@ int main(int argc,char *argv[])
 		}				
 	}		
 }
+
 
 
